@@ -23,9 +23,75 @@ try:
 except Exception:
     _client = None
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
+DATA_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "data",
+)
 ACTIVE_IMPORTED = None
 ACTIVE_IMPORT_META = None
+
+DEMO_CSV = r"""Transaction ID,Settlement Date,Sales,Gateway Fee,Refund,Received,Platform,Evidence Type,Evidence
+TXN4001,2026-08-01,5200.0,260.0,0.0,4730.0,Amazon,,
+TXN4002,2026-08-02,8450.0,422.5,84.5,7943.0,Shopify,,
+TXN4003,2026-08-03,12750.0,510.0,255.0,11510.0,Razorpay,probable,"Settlement timing and reserve indicators suggest a likely temporary hold, but no source document proves the cause."
+TXN4004,2026-08-04,6300.0,283.5,189.0,5827.5,Stripe,,
+TXN4005,2026-08-05,15400.0,539.0,0.0,14861.0,WooCommerce,,
+TXN4006,2026-08-06,9200.0,506.0,138.0,8556.0,Flipkart,,
+TXN4007,2026-08-07,11800.0,590.0,59.0,11151.0,Amazon,,
+TXN4008,2026-08-08,7100.0,355.0,0.0,6745.0,Shopify,,
+TXN4009,2026-08-09,18600.0,744.0,186.0,17530.0,Razorpay,explained,Settlement statement documents a ₹140.00 reserve release timing adjustment matching the variance.
+TXN4010,2026-08-10,5600.0,252.0,112.0,5236.0,Stripe,,
+TXN4011,2026-08-11,10300.0,360.5,309.0,9630.5,WooCommerce,,
+TXN4012,2026-08-12,14200.0,781.0,0.0,13419.0,Flipkart,,
+TXN4013,2026-08-13,7900.0,395.0,118.5,7386.5,Amazon,,
+TXN4014,2026-08-14,22100.0,1105.0,110.5,20884.5,Shopify,,
+TXN4015,2026-08-15,6800.0,272.0,0.0,5178.0,Razorpay,,
+TXN4016,2026-08-16,13100.0,589.5,131.0,12379.5,Stripe,,
+TXN4017,2026-08-17,9700.0,339.5,194.0,9166.5,WooCommerce,,
+TXN4018,2026-08-18,16500.0,907.5,495.0,14487.5,Flipkart,,
+TXN4019,2026-08-19,7400.0,370.0,0.0,7030.0,Amazon,,
+TXN4020,2026-08-20,19800.0,990.0,297.0,17413.0,Shopify,probable,"Settlement timing and reserve indicators suggest a likely temporary hold, but no source document proves the cause."
+TXN4021,2026-08-21,5200.0,208.0,26.0,4966.0,Razorpay,,
+TXN4022,2026-08-22,8450.0,380.25,0.0,8069.75,Stripe,,
+TXN4023,2026-08-23,12750.0,446.25,127.5,12176.25,WooCommerce,,
+TXN4024,2026-08-24,6300.0,346.5,126.0,5827.5,Flipkart,,
+TXN4025,2026-08-25,15400.0,770.0,462.0,14168.0,Amazon,,
+TXN4026,2026-08-26,9200.0,460.0,0.0,8740.0,Shopify,,
+TXN4027,2026-08-27,11800.0,472.0,177.0,11151.0,Razorpay,,
+TXN4028,2026-08-28,7100.0,319.5,35.5,6745.0,Stripe,,
+TXN4029,2026-08-29,18600.0,651.0,0.0,17949.0,WooCommerce,,
+TXN4030,2026-08-30,5600.0,308.0,56.0,4136.0,Flipkart,probable,"Settlement timing and reserve indicators suggest a likely temporary hold, but no source document proves the cause."
+TXN4031,2026-08-01,10300.0,515.0,206.0,9579.0,Amazon,,
+TXN4032,2026-08-02,14200.0,710.0,426.0,13064.0,Shopify,,
+TXN4033,2026-08-03,7900.0,316.0,0.0,7109.0,Razorpay,probable,"Settlement timing and reserve indicators suggest a likely temporary hold, but no source document proves the cause."
+TXN4034,2026-08-04,22100.0,994.5,331.5,20774.0,Stripe,,
+TXN4035,2026-08-05,6800.0,238.0,34.0,6528.0,WooCommerce,,
+TXN4036,2026-08-06,13100.0,720.5,0.0,12259.5,Flipkart,probable,"Settlement timing and reserve indicators suggest a likely temporary hold, but no source document proves the cause."
+TXN4037,2026-08-07,9700.0,485.0,97.0,9118.0,Amazon,,
+TXN4038,2026-08-08,16500.0,825.0,330.0,15070.0,Shopify,explained,Settlement statement documents a ₹275.00 reserve release timing adjustment matching the variance.
+TXN4039,2026-08-09,7400.0,296.0,222.0,6882.0,Razorpay,,
+TXN4040,2026-08-10,19800.0,891.0,0.0,18384.0,Stripe,explained,Settlement statement documents a ₹525.00 reserve release timing adjustment matching the variance.
+TXN4041,2026-08-11,5200.0,182.0,78.0,4260.0,WooCommerce,explained,Settlement statement documents a ₹680.00 reserve release timing adjustment matching the variance.
+TXN4042,2026-08-12,8450.0,464.75,42.25,7943.0,Flipkart,,
+TXN4043,2026-08-13,12750.0,637.5,0.0,12112.5,Amazon,,
+TXN4044,2026-08-14,6300.0,315.0,63.0,5922.0,Shopify,,
+TXN4045,2026-08-15,15400.0,616.0,308.0,14476.0,Razorpay,,
+TXN4046,2026-08-16,9200.0,414.0,276.0,8510.0,Stripe,,
+TXN4047,2026-08-17,11800.0,413.0,0.0,11387.0,WooCommerce,,
+TXN4048,2026-08-18,7100.0,390.5,106.5,6603.0,Flipkart,,
+TXN4049,2026-08-19,18600.0,930.0,93.0,17577.0,Amazon,,
+TXN4050,2026-08-20,5600.0,280.0,0.0,5235.0,Shopify,explained,Settlement statement documents a ₹85.00 reserve release timing adjustment matching the variance.
+TXN4051,2026-08-21,10300.0,412.0,103.0,9645.0,Razorpay,explained,Settlement statement documents a ₹140.00 reserve release timing adjustment matching the variance.
+TXN4052,2026-08-22,14200.0,639.0,284.0,13277.0,Stripe,,
+TXN4053,2026-08-23,7900.0,276.5,237.0,7386.5,WooCommerce,,
+TXN4054,2026-08-24,22100.0,1215.5,0.0,20884.5,Flipkart,,
+TXN4055,2026-08-25,6800.0,340.0,102.0,6358.0,Amazon,,
+TXN4056,2026-08-26,13100.0,655.0,65.5,10629.5,Shopify,,
+TXN4057,2026-08-27,9700.0,388.0,0.0,9227.0,Razorpay,explained,Settlement statement documents a ₹85.00 reserve release timing adjustment matching the variance.
+TXN4058,2026-08-28,16500.0,742.5,165.0,15592.5,Stripe,,
+TXN4059,2026-08-29,7400.0,259.0,148.0,6993.0,WooCommerce,,
+TXN4060,2026-08-30,19800.0,1089.0,594.0,18117.0,Flipkart,,
+"""
 
 
 def money(s: str | float) -> float:
@@ -67,6 +133,12 @@ def build_imported_dataset(records: list[dict]) -> tuple[list[dict], dict]:
         expected = float(r["expected_net"])
         matched = abs(variance) <= 0.50
 
+        evidence_type = str(r.get("evidence_type") or "").strip().lower()
+        evidence_text = str(r.get("evidence") or "").strip()
+
+        evidence_type = str(r.get("evidence_type") or "").strip().lower()
+        evidence_text = str(r.get("evidence") or "").strip()
+
         if matched:
             status = "matched"
             verdict = "VERIFIED"
@@ -77,13 +149,35 @@ def build_imported_dataset(records: list[dict]) -> tuple[list[dict], dict]:
                 "Deterministic gross − fees − refunds calculation",
                 "Imported settlement amount",
             ]
+        elif evidence_type == "explained" and evidence_text:
+            status = "unmatched"
+            verdict = "EXPLAINED"
+            confidence = 92
+            explanation = f"The settlement variance is supported by the supplied evidence: {evidence_text}"
+            evidence = [
+                "Imported CSV transaction record",
+                "Deterministic gross − fees − refunds calculation",
+                "Imported settlement amount",
+                f"Source evidence: {evidence_text}",
+            ]
+        elif evidence_type == "probable" and evidence_text:
+            status = "unmatched"
+            verdict = "PROBABLE"
+            confidence = 78
+            explanation = f"The supplied evidence suggests a likely cause, but does not prove it: {evidence_text}"
+            evidence = [
+                "Imported CSV transaction record",
+                "Deterministic gross − fees − refunds calculation",
+                "Imported settlement amount",
+                f"Suggestive evidence: {evidence_text}",
+            ]
         else:
             status = "unmatched"
             verdict = "UNRESOLVED"
             confidence = 0
             explanation = (
-                "The imported settlement differs from expected net; the uploaded CSV "
-                "does not contain enough causal evidence to establish why."
+                "The imported settlement differs from expected net and the uploaded CSV "
+                "does not contain sufficient causal evidence to establish why."
             )
             evidence = [
                 "Imported CSV transaction record",
@@ -117,8 +211,12 @@ def build_imported_dataset(records: list[dict]) -> tuple[list[dict], dict]:
                 1,
             ),
             "explanation": explanation,
-            "note": "Imported CSV; causal adjustment evidence was not supplied."
-            if not matched else "Imported CSV; settlement verified within tolerance.",
+            "note": (
+                f"Imported CSV; {evidence_text}"
+                if evidence_text
+                else ("Imported CSV; no causal adjustment evidence was supplied."
+                      if not matched else "Imported CSV; settlement verified within tolerance.")
+            ),
             "evidence": evidence,
         })
 
@@ -155,6 +253,14 @@ def build_dataset() -> tuple[list[dict], dict]:
     global ACTIVE_IMPORTED
     if ACTIVE_IMPORTED is not None:
         return ACTIVE_IMPORTED
+    bank_feed_path = os.path.join(DATA_DIR, "bank_feed.csv")
+    payouts_path = os.path.join(DATA_DIR, "shopify_payouts.csv")
+
+    # If the original source files are unavailable, open directly on the
+    # self-contained demo dataset instead of failing during dashboard startup.
+    if not (os.path.exists(bank_feed_path) and os.path.exists(payouts_path)):
+        return build_imported_dataset(import_csv(DEMO_CSV)["records"])
+
     feed = {r["txn_id"]: r for r in load_bank_feed()}
     payouts = {p.payout_id: p for p in load_payouts()}
     matches = reconcile()
@@ -221,7 +327,7 @@ def build_dataset() -> tuple[list[dict], dict]:
         "expected_amount": expected,
         "amount_at_risk": at_risk,
         "verification_rate": round(100 * summary.get("by_status", {}).get("matched", 0) / len(transactions), 1) if transactions else 0,
-        "batch_size": len(load_bank_feed()),
+        "batch_size": len(transactions),
     }
     transactions.sort(key=lambda x: (x["status"] == "matched", -(abs(x["variance"] or 0))))
     return transactions, summary
@@ -252,17 +358,28 @@ def investigate_item(item: dict) -> dict:
         "evidence": item.get("evidence", []),
     }
 
+    if item.get("verdict") == "EXPLAINED":
+        causes = [
+            {"cause": "Documented settlement adjustment", "status": "EXPLAINED", "reason": item.get("explanation") or "The imported evidence directly accounts for the variance."},
+            {"cause": "Independent confirmation", "status": "NEXT_CHECK", "reason": "Confirm the same adjustment on the original settlement statement before posting."},
+        ]
+    elif item.get("verdict") == "PROBABLE":
+        causes = [
+            {"cause": "Reserve or settlement timing", "status": "PROBABLE", "reason": item.get("explanation") or "The supplied indicators suggest a temporary settlement effect, but do not prove it."},
+            {"cause": "Unseen settlement adjustment", "status": "UNCONFIRMED", "reason": "The current source data does not include a separate adjustment record that would prove this."},
+        ]
+    else:
+        causes = [
+            {"cause": "Unidentified settlement difference", "status": "UNCONFIRMED", "reason": "The supplied records establish the variance but do not establish its cause."},
+            {"cause": "Missing source evidence", "status": "NEXT_CHECK", "reason": "Inspect the original settlement statement or adjustment ledger for supporting evidence."},
+        ]
+
     fallback = {
         "summary": (
-            f"{item['txn_id']} is {item['verdict']} because the bank deposit is "
-            f"below the deterministic expected settlement. The source reconciliation "
-            f"rule flags a likely reserve/hold, but the supplied records do not prove "
-            f"the underlying cause."
+            f"{item['txn_id']} is {item['verdict']}. "
+            + (item.get("explanation") or "The source records do not provide enough evidence to explain the variance.")
         ),
-        "likely_causes": [
-            {"cause": "Reserve or hold", "status": "PROBABLE", "reason": "The existing reconciliation rule explicitly flags a likely reserve/hold for this short settlement."},
-            {"cause": "Unseen settlement adjustment", "status": "UNCONFIRMED", "reason": "The current source data does not include a separate adjustment record that would prove this."},
-        ],
+        "likely_causes": causes,
         "next_steps": [
             "Check the channel settlement statement for a reserve, hold, or adjustment line.",
             "Compare the settlement statement with the payout metadata before changing the books.",
@@ -341,7 +458,70 @@ def post_payload(path: str, body: dict) -> tuple[int, dict]:
     if path == "/api/ingest/reset":
         ACTIVE_IMPORTED = None
         ACTIVE_IMPORT_META = None
-        return 200, {"ok": True, "message": "Returned to the bundled demo dataset."}
+
+    DEMO_CSV = r"""Transaction ID,Settlement Date,Sales,Gateway Fee,Refund,Received,Platform,Evidence Type,Evidence
+    TXN4001,2026-08-01,5200.0,260.0,0.0,4730.0,Amazon,,
+    TXN4002,2026-08-02,8450.0,422.5,84.5,7943.0,Shopify,,
+    TXN4003,2026-08-03,12750.0,510.0,255.0,11510.0,Razorpay,probable,"Settlement timing and reserve indicators suggest a likely temporary hold, but no source document proves the cause."
+    TXN4004,2026-08-04,6300.0,283.5,189.0,5827.5,Stripe,,
+    TXN4005,2026-08-05,15400.0,539.0,0.0,14861.0,WooCommerce,,
+    TXN4006,2026-08-06,9200.0,506.0,138.0,8556.0,Flipkart,,
+    TXN4007,2026-08-07,11800.0,590.0,59.0,11151.0,Amazon,,
+    TXN4008,2026-08-08,7100.0,355.0,0.0,6745.0,Shopify,,
+    TXN4009,2026-08-09,18600.0,744.0,186.0,17530.0,Razorpay,explained,Settlement statement documents a ₹140.00 reserve release timing adjustment matching the variance.
+    TXN4010,2026-08-10,5600.0,252.0,112.0,5051.00,Stripe,,
+    TXN4011,2026-08-11,10300.0,360.5,309.0,9630.5,WooCommerce,,
+    TXN4012,2026-08-12,14200.0,781.0,0.0,13419.0,Flipkart,,
+    TXN4013,2026-08-13,7900.0,395.0,118.5,7386.5,Amazon,,
+    TXN4014,2026-08-14,22100.0,1105.0,110.5,20884.5,Shopify,,
+    TXN4015,2026-08-15,6800.0,272.0,0.0,5178.0,Razorpay,,
+    TXN4016,2026-08-16,13100.0,589.5,131.0,12379.5,Stripe,,
+    TXN4017,2026-08-17,9700.0,339.5,194.0,9166.5,WooCommerce,,
+    TXN4018,2026-08-18,16500.0,907.5,495.0,14487.5,Flipkart,,
+    TXN4019,2026-08-19,7400.0,370.0,0.0,7030.0,Amazon,,
+    TXN4020,2026-08-20,19800.0,990.0,297.0,17413.0,Shopify,probable,"Settlement timing and reserve indicators suggest a likely temporary hold, but no source document proves the cause."
+    TXN4021,2026-08-21,5200.0,208.0,26.0,4966.0,Razorpay,,
+    TXN4022,2026-08-22,8450.0,380.25,0.0,7759.75,Stripe,,
+    TXN4023,2026-08-23,12750.0,446.25,127.5,12176.25,WooCommerce,,
+    TXN4024,2026-08-24,6300.0,346.5,126.0,5827.5,Flipkart,,
+    TXN4025,2026-08-25,15400.0,770.0,462.0,14168.0,Amazon,,
+    TXN4026,2026-08-26,9200.0,460.0,0.0,8740.0,Shopify,,
+    TXN4027,2026-08-27,11800.0,472.0,177.0,11151.0,Razorpay,,
+    TXN4028,2026-08-28,7100.0,319.5,35.5,6745.0,Stripe,,
+    TXN4029,2026-08-29,18600.0,651.0,0.0,17949.0,WooCommerce,,
+    TXN4030,2026-08-30,5600.0,308.0,56.0,4136.0,Flipkart,probable,"Settlement timing and reserve indicators suggest a likely temporary hold, but no source document proves the cause."
+    TXN4031,2026-08-01,10300.0,515.0,206.0,9579.0,Amazon,,
+    TXN4032,2026-08-02,14200.0,710.0,426.0,13064.0,Shopify,,
+    TXN4033,2026-08-03,7900.0,316.0,0.0,7109.0,Razorpay,probable,"Settlement timing and reserve indicators suggest a likely temporary hold, but no source document proves the cause."
+    TXN4034,2026-08-04,22100.0,994.5,331.5,20774.0,Stripe,,
+    TXN4035,2026-08-05,6800.0,238.0,34.0,6528.0,WooCommerce,,
+    TXN4036,2026-08-06,13100.0,720.5,0.0,12259.5,Flipkart,probable,"Settlement timing and reserve indicators suggest a likely temporary hold, but no source document proves the cause."
+    TXN4037,2026-08-07,9700.0,485.0,97.0,8478.00,Amazon,,
+    TXN4038,2026-08-08,16500.0,825.0,330.0,15070.0,Shopify,explained,Settlement statement documents a ₹275.00 reserve release timing adjustment matching the variance.
+    TXN4039,2026-08-09,7400.0,296.0,222.0,6882.0,Razorpay,,
+    TXN4040,2026-08-10,19800.0,891.0,0.0,18384.0,Stripe,explained,Settlement statement documents a ₹525.00 reserve release timing adjustment matching the variance.
+    TXN4041,2026-08-11,5200.0,182.0,78.0,4260.0,WooCommerce,explained,Settlement statement documents a ₹680.00 reserve release timing adjustment matching the variance.
+    TXN4042,2026-08-12,8450.0,464.75,42.25,7943.0,Flipkart,,
+    TXN4043,2026-08-13,12750.0,637.5,0.0,12112.5,Amazon,,
+    TXN4044,2026-08-14,6300.0,315.0,63.0,5922.0,Shopify,,
+    TXN4045,2026-08-15,15400.0,616.0,308.0,14476.0,Razorpay,,
+    TXN4046,2026-08-16,9200.0,414.0,276.0,8510.0,Stripe,,
+    TXN4047,2026-08-17,11800.0,413.0,0.0,11387.0,WooCommerce,,
+    TXN4048,2026-08-18,7100.0,390.5,106.5,6603.0,Flipkart,,
+    TXN4049,2026-08-19,18600.0,930.0,93.0,17577.0,Amazon,,
+    TXN4050,2026-08-20,5600.0,280.0,0.0,5235.0,Shopify,explained,Settlement statement documents a ₹85.00 reserve release timing adjustment matching the variance.
+    TXN4051,2026-08-21,10300.0,412.0,103.0,8720.00,Razorpay,,
+    TXN4052,2026-08-22,14200.0,639.0,284.0,13277.0,Stripe,,
+    TXN4053,2026-08-23,7900.0,276.5,237.0,7386.5,WooCommerce,,
+    TXN4054,2026-08-24,22100.0,1215.5,0.0,20884.5,Flipkart,,
+    TXN4055,2026-08-25,6800.0,340.0,102.0,6358.0,Amazon,,
+    TXN4056,2026-08-26,13100.0,655.0,65.5,10629.5,Shopify,,
+    TXN4057,2026-08-27,9700.0,388.0,0.0,9227.0,Razorpay,explained,Settlement statement documents a ₹85.00 reserve release timing adjustment matching the variance.
+    TXN4058,2026-08-28,16500.0,742.5,165.0,15592.5,Stripe,,
+    TXN4059,2026-08-29,7400.0,259.0,148.0,6993.0,WooCommerce,,
+    TXN4060,2026-08-30,19800.0,1089.0,594.0,18117.0,Flipkart,,
+    """
+    return 200, {"ok": True, "message": "Returned to the bundled demo dataset."}
 
     return 404, {"error": "unknown endpoint"}
 

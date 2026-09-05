@@ -6,7 +6,7 @@ from .column_mapper import normalize_mapping, suggest_column_mapping
 
 CANONICAL_COLUMNS = [
     "txn_id","date","channel","payout_id","gross","fees","refunds",
-    "actual_deposit","expected_net","variance","variance_pct",
+    "actual_deposit","expected_net","variance","variance_pct","evidence_type","evidence",
 ]
 
 class CSVImportError(ValueError):
@@ -89,6 +89,8 @@ def normalize_rows(rows, mapping):
             "expected_net": expected,
             "variance": variance,
             "variance_pct": variance_pct,
+            "evidence_type": str(get("evidence_type")).strip().lower(),
+            "evidence": str(get("evidence")).strip(),
         })
 
     if not output:

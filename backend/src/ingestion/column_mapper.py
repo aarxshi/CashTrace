@@ -11,6 +11,8 @@ ALIASES = {
     "fees": ["fees","fee","fee_amount","feeamount","gateway_fee","processing_fee","platform_fee","commission","charges"],
     "refunds": ["refunds","refund","refund_amount","refundamount","adjustment","adjustments","returns","return_amount"],
     "actual_deposit": ["actual_deposit","actualdeposit","actual_settlement","actualsettlement","settled_amount","settledamount","received","received_amount","bank_amount","bank_deposit","deposit","deposit_amount","bank_settlement"],
+    "evidence_type": ["evidence_type","evidencetype","resolution_type","resolutiontype","verdict_type","classification"],
+    "evidence": ["evidence","evidence_note","evidencenote","resolution_evidence","resolutionevidence","investigation_evidence","adjustment_note","adjustmentnote","notes","note"],
 }
 
 def _norm(value):
