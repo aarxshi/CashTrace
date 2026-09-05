@@ -14,6 +14,8 @@ CashTrace asks:
 > **"Can we explain the entire journey of this money --- and can we
 > prove why the final settlement is what it is?"**
 
+![CashTrace financial control tower](assets/Dashboard.png)
+
 It turns fragmented financial records into a **verifiable money
 lifecycle**, combining deterministic financial controls with AI-powered
 investigation.
@@ -65,6 +67,8 @@ That creates a much more useful question for a finance operator:
 ------------------------------------------------------------------------
 
 # What makes CashTrace different?
+
+![Settlement lifecycle and reconciliation details](assets/Transactions.png)
 
 ### 1. From record matching → money lifecycle verification
 
@@ -218,6 +222,8 @@ CashTrace therefore enforces a hard boundary:
 
 When an exception is selected, CashTrace sends the **deterministically
 computed facts** to the configured LLM.
+
+![AI-powered exception investigation](assets/Exceptions.png)
 
 The model is instructed to:
 
