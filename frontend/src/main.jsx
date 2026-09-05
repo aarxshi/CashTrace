@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {Search, Bell, LayoutDashboard, ArrowRightLeft, AlertTriangle, Bot, ClipboardCheck, ShieldCheck, ChevronRight, RefreshCw, X, Sparkles, Activity, CircleDollarSign, FileSearch, Clock3, LoaderCircle} from 'lucide-react';
+import {Search, Bell, LayoutDashboard, ArrowRightLeft, AlertTriangle, Bot, ClipboardCheck, ShieldCheck, ChevronRight, RefreshCw, X, Sparkles, Activity, CircleDollarSign, FileSearch, Clock3, LoaderCircle, Upload, CheckCircle2} from 'lucide-react';
 import './styles.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
@@ -14,6 +14,17 @@ const compactMoney = n => {
   return money(v);
 };
 
+async function apiPost(path, body) {
+  const res = await fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `API request failed (${res.status})`);
+  return data;
+}
+
 async function api(path) {
   const res = await fetch(`${API}${path}`);
   const body = await res.json();
@@ -23,6 +34,14 @@ async function api(path) {
 
 function App(){
   const [page,setPage] = useState('Overview');
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importText, setImportText] = useState("");
+  const [importPreview, setImportPreview] = useState(null);
+  const [importMapping, setImportMapping] = useState({});
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState("");
+  const [importSuccess, setImportSuccess] = useState("");
   const [selected,setSelected] = useState(null);
   const [query,setQuery] = useState('');
   const [data,setData] = useState(null);
@@ -34,6 +53,57 @@ function App(){
   const [lastSync,setLastSync] = useState(null);
   const [notificationsOpen,setNotificationsOpen] = useState(false);
   const [searchFocused,setSearchFocused] = useState(false);
+
+  const startImport = () => {
+    setImportOpen(true);
+    setImportFile(null);
+    setImportText('');
+    setImportPreview(null);
+    setImportMapping({});
+    setImportError('');
+    setImportSuccess('');
+  };
+
+  const chooseCsv = async (file) => {
+    if (!file) return;
+    setImportFile(file);
+    setImportError('');
+    setImportSuccess('');
+    try {
+      const text = await file.text();
+      setImportText(text);
+      const preview = await apiPost('/api/ingest/preview', {csv_text: text});
+      setImportPreview(preview);
+      const initial = {};
+      Object.entries(preview.suggestions || {}).forEach(([field, suggestion]) => {
+        initial[field] = suggestion.source;
+      });
+      setImportMapping(initial);
+    } catch (e) {
+      setImportPreview(null);
+      setImportError(e.message || 'Could not preview the CSV.');
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!importText) return;
+    setImportBusy(true);
+    setImportError('');
+    setImportSuccess('');
+    try {
+      const result = await apiPost('/api/ingest', {
+        csv_text: importText,
+        mapping: importMapping,
+      });
+      setImportSuccess(result.message);
+      setImportOpen(false);
+      await load();
+    } catch (e) {
+      setImportError(e.message || 'Import failed.');
+    } finally {
+      setImportBusy(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -102,7 +172,7 @@ function App(){
           {exceptions.length ? exceptions.slice(0,5).map(e=><button key={e.txn_id} className="notifitem" onClick={()=>{setNotificationsOpen(false);openTransaction(e)}}><span className={`severity ${(e.severity||'Low').toLowerCase()}`}></span><span><b>{e.txn_id}</b><small>{e.payout_id || 'Settlement'} · {signedMoney(e.variance)} variance</small></span><ChevronRight size={15}/></button>) : <div className="notifempty">No new exceptions in this batch.</div>}
           {exceptions.length>5&&<button className="notifall" onClick={()=>{setNotificationsOpen(false);setPage('Exceptions')}}>View all exceptions <ChevronRight size={14}/></button>}
         </div>}
-      </div><button className="sync" onClick={load} disabled={loading}>{loading?<LoaderCircle size={15} className="spin"/>:<RefreshCw size={15}/>} {loading?'Syncing':'Sync'}</button></div></header>
+      </div><button className="importbtn" onClick={startImport}><Upload size={15}/> Import CSV</button><button className="sync" onClick={load} disabled={loading}>{loading?<LoaderCircle size={15} className="spin"/>:<RefreshCw size={15}/>} {loading?'Syncing':'Sync'}</button></div></header>
       {error&&<div className="apierror">{error}</div>}
       <div className="content">
         {page==='Overview'&&<Overview data={data} exceptions={searchedExceptions} dates={batchDates} onOpen={openTransaction} onPage={setPage}/>} 
@@ -113,7 +183,19 @@ function App(){
         {page==='Audit Trail'&&<Audit items={audit} onOpen={openTransaction}/>} 
       </div>
     </main>
-    {selected&&<Drawer item={selected} close={()=>setSelected(null)}/>} 
+    {selected&&<Drawer item={selected} close={()=>setSelected(null)}/>}
+    {importOpen&&<ImportModal
+      file={importFile}
+      preview={importPreview}
+      mapping={importMapping}
+      setMapping={setImportMapping}
+      busy={importBusy}
+      error={importError}
+      success={importSuccess}
+      onChoose={chooseCsv}
+      onImport={confirmImport}
+      close={()=>setImportOpen(false)}
+    />}
   </div>
 }
 
@@ -145,6 +227,67 @@ function AuditItem({item,onOpen}){
   return clickable ? <button className="audititem auditclick" onClick={()=>onOpen({txn_id:item.txn_id})}><div className="auditicon"><I size={17}/></div><div><div className="audititemtop"><b>{item.title}</b><ChevronRight size={14}/></div><small>{item.time}</small><p>{item.detail}</p></div></button> : <div className="audititem"><div className="auditicon"><I size={17}/></div><div><b>{item.title}</b><small>{item.time}</small><p>{item.detail}</p></div></div>
 }
 function Empty({text}){return <div className="empty">{text}</div>}
+function ImportModal({file,preview,mapping,setMapping,busy,error,success,onChoose,onImport,close}){
+  const fields = [
+    ['txn_id','Transaction ID','Required'],
+    ['date','Date','Required'],
+    ['gross','Gross amount','Required'],
+    ['actual_deposit','Actual settlement','Required'],
+    ['channel','Channel','Optional'],
+    ['payout_id','Payout ID','Optional'],
+    ['fees','Fees','Optional'],
+    ['refunds','Refunds / adjustments','Optional'],
+  ];
+  const headers = preview?.headers || [];
+  return <div className="modalwrap" onClick={close}>
+    <section className="importmodal" onClick={e=>e.stopPropagation()}>
+      <div className="importhead">
+        <div><span className="eyebrow">DATA INGESTION</span><h2>Import financial data</h2><p>Upload a reasonable financial CSV. CashTrace normalizes it before verification.</p></div>
+        <button className="close" onClick={close}><X size={19}/></button>
+      </div>
+
+      {!preview ? <div className="dropzone">
+        <Upload size={24}/>
+        <b>Choose a CSV file</b>
+        <span>Column names can differ — CashTrace will suggest the mapping.</span>
+        <label className="filebtn">Select CSV<input type="file" accept=".csv,text/csv" onChange={e=>onChoose(e.target.files?.[0])}/></label>
+        {file&&<small>{file.name}</small>}
+      </div> : <>
+        <div className="importsummary">
+          <div><span>File</span><b>{file?.name || 'CSV'}</b></div>
+          <div><span>Rows</span><b>{preview.row_count}</b></div>
+          <div><span>Detected fields</span><b>{Object.keys(preview.suggestions||{}).length}</b></div>
+          <label className="filebtn compactfile">Replace<input type="file" accept=".csv,text/csv" onChange={e=>onChoose(e.target.files?.[0])}/></label>
+        </div>
+        <div className="mappingtitle"><div><b>Column mapping</b><small>Confirm the suggested source column for each CashTrace field.</small></div><span>Derived values are recalculated after import.</span></div>
+        <div className="mappingtable">
+          {fields.map(([field,label,required])=><div className="mappingrow" key={field}>
+            <div><b>{label}</b><small>{required}</small></div>
+            <select value={mapping[field] || ''} onChange={e=>setMapping({...mapping,[field]:e.target.value})}>
+              <option value="">Not mapped</option>
+              {headers.map(h=><option key={h} value={h}>{h}</option>)}
+            </select>
+            <span className={`mappingconfidence ${preview.suggestions?.[field]?.confidence >= .9 ? 'good' : ''}`}>
+              {mapping[field] && preview.suggestions?.[field]?.source === mapping[field] ? `${Math.round((preview.suggestions[field].confidence || 0)*100)}% match` : 'Manual'}
+            </span>
+          </div>)}
+        </div>
+        <div className="importpreview">
+          <div><b>Preview</b><small>First {Math.min(3, preview.row_count)} rows</small></div>
+          {(preview.sample||[]).slice(0,3).map((row,i)=><div className="previewrow" key={i}><span>{row[mapping.txn_id] || '—'}</span><span>{row[mapping.channel] || '—'}</span><span>{row[mapping.actual_deposit] || '—'}</span></div>)}
+        </div>
+      </>}
+
+      {error&&<div className="importerror">{error}</div>}
+      {success&&<div className="importsuccess"><CheckCircle2 size={15}/>{success}</div>}
+      <div className="importactions">
+        <button className="secondary" onClick={close}>Cancel</button>
+        {preview&&<button className="primary" onClick={onImport} disabled={busy}>{busy?<><LoaderCircle size={15} className="spin"/> Importing…</>:<>Import & verify <ChevronRight size={15}/></>}</button>}
+      </div>
+    </section>
+  </div>
+}
+
 function Drawer({item,close}){const variance=Number(item.variance||0);const expected=Number(item.expected_net||0);const [running,setRunning]=useState(false);const [investigation,setInvestigation]=useState(null);const [error,setError]=useState('');const runInvestigation=async()=>{setRunning(true);setError('');try{setInvestigation(await api(`/api/investigations/${item.txn_id}`))}catch(e){setError(e.message||'Investigation failed')}finally{setRunning(false)}};return <div className="drawerwrap" onClick={close}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerhead"><div><span className="eyebrow">INVESTIGATION</span><h2>{item.txn_id || item.id}</h2><small>{item.payout_id || 'No payout match'} · {item.channel || 'Unknown channel'}</small></div><button className="close" onClick={close}><X size={19}/></button></div><div className="drawerstatus"><div><span>Verdict</span><strong className={`verdict ${(item.verdict||'UNRESOLVED').toLowerCase()}`}>{item.verdict || 'UNRESOLVED'}</strong></div><div><span>Confidence</span><strong>{item.confidence ?? 0}%</strong></div></div><div className="trail"><h3>Money trail</h3><TrailRow label="Gross" value={item.gross!=null?money(item.gross):'—'}/><TrailRow label="Fees" value={item.fees!=null?signedMoney(-Math.abs(item.fees)):'—'}/><TrailRow label="Refunds / adjustments" value={item.refunds!=null?signedMoney(-Math.abs(item.refunds)):'—'}/><TrailRow label="Expected settlement" value={money(expected)}/><TrailRow label="Actual settlement" value={money(item.actual_deposit)} final/></div><div className="variance"><span>Variance</span><strong>{signedMoney(variance)}</strong><small>{item.variance_pct}% below expected · {item.severity} materiality</small></div><div className="finding"><div className="findingtitle"><Sparkles size={15}/> AI investigation</div><h3>{investigation?.summary ? 'Evidence-bounded finding' : (item.explanation||'Investigation not run').split('.')[0]}</h3><p>{investigation?.summary || item.explanation || 'Run the investigator to generate a bounded explanation from the evidence above.'}</p></div>{investigation&&<><div className="investigationblocks"><div><b>Likely causes</b>{(investigation.likely_causes||[]).map((c,i)=><div className="cause" key={i}><span>{c.status}</span><div><strong>{c.cause}</strong><small>{c.reason}</small></div></div>)}</div><div><b>Next steps</b>{(investigation.next_steps||[]).map((x,i)=><div className="step" key={i}><span>{i+1}</span><p>{x}</p></div>)}</div></div><div className="guardrail">✓ {investigation.guardrail}</div></>}{error&&<div className="drawererror">{error}</div>}<div className="evidence"><h3>Evidence used</h3>{(item.evidence||[]).map((x,i)=><div key={i}>✓ {x}</div>)}</div><div className="draweractions"><button className="secondary" onClick={close}>Close</button><button className="primary" onClick={runInvestigation} disabled={running}>{running?<><LoaderCircle size={15} className="spin"/> Investigating…</>:<><Sparkles size={15}/> {investigation?'Run again':'Run AI investigation'}</>}</button></div></aside></div>}
 function TrailRow({label,value,final=false}){return <div className={final?'trailrow final':'trailrow'}><span>{label}</span><b>{value}</b></div>}
 

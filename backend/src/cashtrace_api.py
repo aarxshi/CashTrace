@@ -12,6 +12,7 @@ import sys
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
+from ingestion.csv_importer import CSVImportError, import_csv, preview_csv
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -22,7 +23,9 @@ try:
 except Exception:
     _client = None
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
+ACTIVE_IMPORTED = None
+ACTIVE_IMPORT_META = None
 
 
 def money(s: str | float) -> float:
@@ -50,7 +53,108 @@ def severity(variance: float, expected: float) -> str:
     return "Low"
 
 
+
+def build_imported_dataset(records: list[dict]) -> tuple[list[dict], dict]:
+    """Turn normalized CSV records into the same UI/API transaction shape.
+
+    Financial values and lifecycle arithmetic come from ingestion normalization,
+    not from the frontend. A non-zero variance is UNRESOLVED unless the imported
+    data itself provides evidence that explains the difference.
+    """
+    transactions = []
+    for r in records:
+        variance = float(r["variance"])
+        expected = float(r["expected_net"])
+        matched = abs(variance) <= 0.50
+
+        if matched:
+            status = "matched"
+            verdict = "VERIFIED"
+            confidence = 100
+            explanation = "Expected net matches the imported bank settlement within the deterministic tolerance."
+            evidence = [
+                "Imported CSV transaction record",
+                "Deterministic gross − fees − refunds calculation",
+                "Imported settlement amount",
+            ]
+        else:
+            status = "unmatched"
+            verdict = "UNRESOLVED"
+            confidence = 0
+            explanation = (
+                "The imported settlement differs from expected net; the uploaded CSV "
+                "does not contain enough causal evidence to establish why."
+            )
+            evidence = [
+                "Imported CSV transaction record",
+                "Deterministic gross − fees − refunds calculation",
+                "Imported settlement amount",
+            ]
+
+        transactions.append({
+            "txn_id": r["txn_id"],
+            "date": r["date"],
+            "description": f"Imported settlement · {r['channel']}",
+            "channel": r["channel"],
+            "payout_id": r["payout_id"] or None,
+            "gross": round(r["gross"], 2),
+            "fees": round(r["fees"], 2),
+            "refunds": round(r["refunds"], 2),
+            "expected_net": round(expected, 2),
+            "actual_deposit": round(r["actual_deposit"], 2),
+            "variance": round(variance, 2),
+            "variance_pct": round(r["variance_pct"], 2),
+            "status": status,
+            "verdict": verdict,
+            "confidence": confidence,
+            "severity": severity(variance, expected) if variance else "Low",
+            "materiality_score": round(
+                min(
+                    100,
+                    (abs(variance) / max(expected, 1)) * 100 * 2
+                    + min(abs(variance) / 10, 50),
+                ),
+                1,
+            ),
+            "explanation": explanation,
+            "note": "Imported CSV; causal adjustment evidence was not supplied."
+            if not matched else "Imported CSV; settlement verified within tolerance.",
+            "evidence": evidence,
+        })
+
+    matched_count = sum(x["status"] == "matched" for x in transactions)
+    processed = round(sum(x["actual_deposit"] for x in transactions), 2)
+    expected = round(sum(x["expected_net"] for x in transactions), 2)
+    gross = round(sum(x["gross"] for x in transactions), 2)
+    fees = round(sum(x["fees"] for x in transactions), 2)
+    refunds = round(sum(x["refunds"] for x in transactions), 2)
+    at_risk = round(sum(abs(x["variance"]) for x in transactions if x["status"] != "matched"), 2)
+
+    summary = {
+        "deposits_examined": len(transactions),
+        "by_status": {
+            "matched": matched_count,
+            "unmatched": len(transactions) - matched_count,
+        },
+        "auto_matched_pct": round(100 * matched_count / len(transactions), 1) if transactions else 0,
+        "reserve_or_short_held": 0.0,
+        "processed_amount": processed,
+        "expected_amount": expected,
+        "amount_at_risk": at_risk,
+        "verification_rate": round(100 * matched_count / len(transactions), 1) if transactions else 0,
+        "batch_size": len(transactions),
+        "gross_payout_value": gross,
+        "fees_total": fees,
+        "refunds_total": refunds,
+    }
+    transactions.sort(key=lambda x: (x["status"] == "matched", -(abs(x["variance"] or 0))))
+    return transactions, summary
+
+
 def build_dataset() -> tuple[list[dict], dict]:
+    global ACTIVE_IMPORTED
+    if ACTIVE_IMPORTED is not None:
+        return ACTIVE_IMPORTED
     feed = {r["txn_id"]: r for r in load_bank_feed()}
     payouts = {p.payout_id: p for p in load_payouts()}
     matches = reconcile()
@@ -202,13 +306,52 @@ def investigate_item(item: dict) -> dict:
     except Exception as exc:
         return {"facts": facts, **fallback, "mode": "fallback-after-llm-error", "model_error": str(exc)}
 
+
+def post_payload(path: str, body: dict) -> tuple[int, dict]:
+    global ACTIVE_IMPORTED, ACTIVE_IMPORT_META
+
+    if path == "/api/ingest/preview":
+        csv_text = body.get("csv_text", "")
+        try:
+            return 200, preview_csv(csv_text)
+        except CSVImportError as exc:
+            return 400, {"error": str(exc)}
+
+    if path == "/api/ingest":
+        csv_text = body.get("csv_text", "")
+        mapping = body.get("mapping")
+        try:
+            result = import_csv(csv_text, mapping)
+        except CSVImportError as exc:
+            return 400, {"error": str(exc)}
+
+        ACTIVE_IMPORTED = build_imported_dataset(result["records"])
+        ACTIVE_IMPORT_META = {
+            "row_count": result["row_count"],
+            "mapping": result["mapping"],
+            "columns": result["columns"],
+            "source": "csv",
+        }
+        return 200, {
+            "ok": True,
+            "message": f"Imported {result['row_count']} transaction(s).",
+            "meta": ACTIVE_IMPORT_META,
+        }
+
+    if path == "/api/ingest/reset":
+        ACTIVE_IMPORTED = None
+        ACTIVE_IMPORT_META = None
+        return 200, {"ok": True, "message": "Returned to the bundled demo dataset."}
+
+    return 404, {"error": "unknown endpoint"}
+
 def payload(path: str, query: dict) -> tuple[int, dict]:
     txns, summary = build_dataset()
     if path == "/api/health":
         return 200, {"ok": True}
     if path == "/api/overview":
         exceptions = [x for x in txns if x["status"] != "matched"]
-        return 200, {"summary": summary, "exceptions": exceptions[:8], "recent": [
+        return 200, {"summary": summary, "source": ACTIVE_IMPORT_META or {"source": "bundled-demo"}, "exceptions": exceptions[:8], "recent": [
             {"event": "Deterministic verification completed", "detail": f"{summary['by_status'].get('matched', 0)} exact settlements verified", "type": "success"},
             {"event": "Exception detection completed", "detail": f"{len(exceptions)} settlement variances require attention", "type": "warning"},
             {"event": "Bank feed normalized", "detail": f"{summary['batch_size']} transactions loaded", "type": "success"},
@@ -295,6 +438,19 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         self._send(204, {})
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            raw = self.rfile.read(length)
+            body = json.loads(raw.decode("utf-8") or "{}")
+            code, response = post_payload(parsed.path, body)
+            self._send(code, response)
+        except json.JSONDecodeError:
+            self._send(400, {"error": "Request body must be valid JSON."})
+        except Exception as exc:
+            self._send(500, {"error": str(exc)})
 
     def do_GET(self):
         parsed = urlparse(self.path)

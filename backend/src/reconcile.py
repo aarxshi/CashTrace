@@ -25,7 +25,10 @@ import os
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+DATA_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "data"
+)
 
 AMOUNT_TOLERANCE = 0.50   # dollars; covers rounding across sources
 WINDOW_DAYS = 10          # max settlement lag we'll consider a candidate
